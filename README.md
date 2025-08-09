@@ -10,10 +10,9 @@ VfioIgdPkg repo inside the container, so everything is ready to build right away
 
 ```
 igd-rom/
-│
 ├── Dockerfile # Docker build instructions
 ├── README.md # This file
-└── build-output # Directory mapped to host persistant storage
+└── build-output/ # Directory mapped to host persistant storage
 ```
 
 ## Docker build command
@@ -27,6 +26,14 @@ docker run -it --rm \
 ```
 
 The container will self-destroy on exit, which is why we map in the build-output directory for persistant storage on the host
+
+## Container Directory Structure
+
+```
+edk2/
+└── VfioIgdPkg/ # tomitamoeko’s VfioIgdPkg code
+    └── build-output/ # Directory mapped to host persistant storage
+```
 
 ## ROM file build
 
