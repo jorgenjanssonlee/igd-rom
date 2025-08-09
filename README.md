@@ -16,31 +16,9 @@ igd-rom/
 └── build-output # Directory mapped to host persistant storage
 ```
 
-## Dockerfile
-
-```dockerfile
-# Start from Tianocore's Ubuntu 22 build image
-FROM ghcr.io/tianocore/containers/ubuntu-22-build:latest
-
-# Set working directory to edk2 repo root
-WORKDIR /edk2
-
-# Clone tomitamoeko's patched edk2 repo
-RUN git clone https://github.com/tomitamoeko/edk2.git . && \
-    git submodule update --init && \
-    make -C BaseTools
-
-# Clone VfioIgdPkg into /edk2/VfioIgdPkg
-RUN git clone https://github.com/tomitamoeko/VfioIgdPkg.git /edk2/VfioIgdPkg
-
-# Always source edksetup.sh when starting a shell
-RUN echo "source /edk2/edksetup.sh" >> /root/.bashrc
-
-# Default to interactive bash
-CMD ["/bin/bash"]
-```
-
 ## Docker build command
+
+From the host
 
 ```
 docker run -it --rm \
@@ -48,7 +26,11 @@ docker run -it --rm \
   edk2-vfioigd-build
 ```
 
+The container will self-destroy on exit, which is why we map in the build-output directory for persistant storage on the host
+
 ## ROM file build
+
+From wihtin the running container
 
 Build the igd.rom file and copy it into the mapped build-output folder:
 
@@ -72,4 +54,28 @@ Replace Build/.../FV/igd.rom with the actual path printed after build (usually s
 ```
 cd /edk2/VfioIgdPkg
 ./build.sh /edk2/build-output/igd.rom
+```
+
+## Dockerfile explanation
+
+```dockerfile
+# Start from Tianocore's Ubuntu 22 build image
+FROM ghcr.io/tianocore/containers/ubuntu-22-build:latest
+
+# Set working directory to edk2 repo root
+WORKDIR /edk2
+
+# Clone tomitamoeko's patched edk2 repo
+RUN git clone https://github.com/tomitamoeko/edk2.git . && \
+    git submodule update --init && \
+    make -C BaseTools
+
+# Clone VfioIgdPkg into /edk2/VfioIgdPkg
+RUN git clone https://github.com/tomitamoeko/VfioIgdPkg.git /edk2/VfioIgdPkg
+
+# Always source edksetup.sh when starting a shell
+RUN echo "source /edk2/edksetup.sh" >> /root/.bashrc
+
+# Default to interactive bash
+CMD ["/bin/bash"]
 ```
