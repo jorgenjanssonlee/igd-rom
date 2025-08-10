@@ -1,66 +1,58 @@
 # EDK II Docker Build Environment for tomitamoeko’s VfioIgdPkg
 
 This setup creates a clean, reproducible environment for building tomitamoeko’s VfioIgdPkg IGD rom files.
-For details see: https://github.com/tomitamoeko/VfioIgdPkg
-
-It uses Docker and a Dockerfile to clone both tomitamoeko’s patched edk2 repo and the
+It uses Docker and a Dockerfile to clone both the standard edk2 repo and tomitamoeko’s
 VfioIgdPkg repo inside the container, so everything is ready to build right away.
+
+**NOTE:** On run the container will produce a igd.rom file with _NO GOP display output_, i.e. without the IntelGopDriver.
+This is only useful for UPT mode, NOT legacy mode, when used as vBIOS for IGD passtrough in QEMU.
+For details see: https://github.com/tomitamoeko/VfioIgdPkg
+and: https://github.com/qemu/qemu/blob/master/docs/igd-assign.txt
 
 ## Host Directory Structure
 
 ```
 igd-rom/
-├── Dockerfile # Docker build instructions
 ├── README.md # This file
-└── build-output/ # Directory mapped to host persistant storage
+├── Dockerfile # Docker build instructions
+└── build-output/ # Directory for persistant storage
 ```
 
-## Docker build command
+## Build the Docker image
 
 From the host
 
-```
-docker run -it --rm \
-  -v /path/to/host/build-output:/edk2/build-output \
-  edk2-vfioigd-build
+```bash
+docker build -t edk2-igd .
 ```
 
-The container will self-destroy on exit, which is why we map in the build-output directory for persistant storage on the host
+## Run the Docker container
+
+From the host igd-rom directory
+
+```bash
+docker run --rm \
+    -v $(pwd)/build-output:/edk2/build-output \
+    edk2-igd
+```
+
+The container will self-destroy on exit.
+This is why we map in the build-output directory for persistant storage of the igd.rom file on the host
+
+## ROM file build
+
+This is automated in the Docker file and executes automatically on container run.
+
+The output file is called igd.rom and is copied to the mapped folder so it is accessible from the host build-output directory
+
+See the CMD section in the Dockerfile for details on teh buidl and copy commands.
 
 ## Container Directory Structure
 
 ```
-edk2/
+edk2/ # edk2 build tools
 └── VfioIgdPkg/ # tomitamoeko’s VfioIgdPkg code
-    └── build-output/ # Directory mapped to host persistant storage
-```
-
-## ROM file build
-
-From wihtin the running container
-
-Build the igd.rom file and copy it into the mapped build-output folder:
-
-Inside the container, when you run the build script, specify the output path or copy the resulting file to /edk2/build-output. For example:
-
-```
-cd /edk2/VfioIgdPkg
-./build.sh igd.rom
-```
-
-Copy igd.rom to mapped folder so it appears on host
-
-```
-cp Build/.../FV/igd.rom /edk2/build-output/
-```
-
-Replace Build/.../FV/igd.rom with the actual path printed after build (usually something like Build/IgdAssignmentDxe/DEBUG_GCC5/FV/igd.rom).
-
-## Alternative ROM file build directly to output directory
-
-```
-cd /edk2/VfioIgdPkg
-./build.sh /edk2/build-output/igd.rom
+└── build-output/ # Directory mapped to host persistant storage
 ```
 
 ## Dockerfile explanation
@@ -72,8 +64,8 @@ FROM ghcr.io/tianocore/containers/ubuntu-22-build:latest
 # Set working directory to edk2 repo root
 WORKDIR /edk2
 
-# Clone tomitamoeko's patched edk2 repo
-RUN git clone https://github.com/tomitamoeko/edk2.git . && \
+# Clone and initiate the edk2 repo
+RUN git clone https://github.com/tianocore/edk2.git . && \
     git submodule update --init && \
     make -C BaseTools
 
@@ -83,6 +75,18 @@ RUN git clone https://github.com/tomitamoeko/VfioIgdPkg.git /edk2/VfioIgdPkg
 # Always source edksetup.sh when starting a shell
 RUN echo "source /edk2/edksetup.sh" >> /root/.bashrc
 
-# Default to interactive bash
-CMD ["/bin/bash"]
+# Ensure build output directory exists
+RUN mkdir -p /edk2/build-output
+
+# Run build automatically, copy output file to mapped directory, and fail if not found
+CMD ["bash", "-c", "\
+    source /edk2/edksetup.sh && \
+    cd /edk2/VfioIgdPkg && \
+    ./build.sh igd.rom && \
+    if [ ! -f /edk2/VfioIgdPkg/igd.rom ]; then \
+    echo 'ERROR: igd.rom not found!' >&2; \
+    exit 1; \
+    fi && \
+    cp /edk2/VfioIgdPkg/igd.rom /edk2/build-output/ \
+    "]
 ```
