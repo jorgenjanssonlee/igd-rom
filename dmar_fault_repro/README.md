@@ -33,7 +33,44 @@ After install, install optional deps used by [`guest-linux/repro.sh`](guest-linu
 sudo dnf install -y mpv xdotool xset
 ```
 
+### Codec stack for Phase B (Fedora)
+
+Phase B runs `mpv` against a short **H.264** sample URL by default. Fedora’s default repos omit full **patent-encumbered** codec bits that `mpv`/`ffmpeg` need to decode that clip, which shows up as decoder/`libopenh264` errors.
+
+Enable **RPM Fusion (free)** once, then install **RPM Fusion’s `ffmpeg`**. Fedora often pre-installs **`ffmpeg-free`**, which conflicts with the full build — use **`--allowerasing`** so DNF can replace the free package with the Fusion one. No reboot is required; the next `mpv` run picks up the new libraries.
+
+Alternatively, skip codec setup entirely and use a local file: `REPRO_VIDEO=/path/to/file.mp4 ./repro.sh phase-b`.
+
+```bash
+sudo dnf install -y "https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm"
+sudo dnf install -y ffmpeg --allowerasing
+```
+
+If `dnf` still complains about **`ffmpeg-free`**, run what it suggests (often `dnf swap ffmpeg-free ffmpeg --allowerasing`) or repeat the `ffmpeg` line after Fusion is enabled.
+
 (Optional: `sudo dnf install -y xrandr` — useful manually; Phase A uses `xset dpms`.)
+
+### SSH from another machine (optional)
+
+Ping working but **`ssh user@GUEST_IP` → connection refused** means **no SSH server is listening** in the guest (Fedora does not enable one by default for every install path). Install **OpenSSH server** and start **`sshd`**:
+
+```bash
+sudo dnf install -y openssh-server
+sudo systemctl enable --now sshd
+```
+
+Then from your Mac (or any host on the LAN): `ssh youruser@GUEST_IP`. On many setups **no firewall changes** are needed; if you still get **refused** after `sshd` is running, check `sudo systemctl status sshd` and, with **firewalld** enabled, add the **ssh** service.
+
+**Running `repro.sh` over SSH (recommended pattern):** A plain SSH login has **`DISPLAY` unset**, so Phases A–C would skip or mis-target the desktop. Ssh in as the **same Linux user** that is logged into the **graphical X11 session**, `cd` to `repro.sh`, then point the shell at that session before each run (output still appears in your SSH terminal):
+
+```bash
+export DISPLAY=:0
+export XAUTHORITY="${XAUTHORITY:-$HOME/.Xauthority}"
+./repro.sh probe
+./repro.sh phase-a   # example
+```
+
+If you see **X11 permission errors** (`No protocol specified` / cannot open display), run once from a **terminal on the VM desktop**: `xhost +SI:localuser:$(whoami)` (or relax with `xhost +local:` only while testing), then retry over SSH with the same exports.
 
 ### Alternatives (if you prefer a smaller ISO)
 
@@ -53,7 +90,7 @@ chmod +x host/collect.sh host/watch_dmar.sh
 ./host/watch_dmar.sh --tee artifacts/run-001/live.log
 ```
 
-Start the VM; in the **Linux guest** (preferred):
+Start the VM; in the **Linux guest** (preferred). If you use **SSH** from another machine for Phases **A–C**, export **`DISPLAY=:0`** and **`XAUTHORITY`** first — see [SSH from another machine (optional)](#ssh-from-another-machine-optional).
 
 ```bash
 chmod +x repro.sh   # path: guest-linux/repro.sh copied in, or mount this repo

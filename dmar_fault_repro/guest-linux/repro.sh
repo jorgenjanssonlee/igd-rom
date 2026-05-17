@@ -75,9 +75,15 @@ phase_b() {
         timeout 12s mpv --vo=gpu --force-window=yes "$REPRO_VIDEO" >/dev/null 2>&1 || true
     elif command -v mpv >/dev/null 2>&1; then
         log "Running mpv (10 s, windowed, --vo=gpu). Set REPRO_VIDEO=/path/to.mp4 when offline."
+        # timeout(1) exits 124 when the timer fires — that is expected, not a codec/network failure.
         timeout 10s mpv --vo=gpu --force-window=yes --loop-file=inf \
             "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4" 2>/dev/null \
-            || log "mpv exited (network or codec); use REPRO_VIDEO for a local clip"
+            || {
+                ec=$?
+                if (( ec != 124 )); then
+                    log "mpv exited (network or codec); use REPRO_VIDEO for a local clip"
+                fi
+            }
     elif command -v ffplay >/dev/null 2>&1; then
         log "Running ffplay test pattern (8 s)"
         timeout 8s ffplay -f lavfi -i testsrc=duration=8:size=1280x720:rate=30 -window_title dmar_repro -autoexit \

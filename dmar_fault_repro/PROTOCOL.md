@@ -36,7 +36,7 @@ Use this checklist together with [`host/collect.sh`](host/collect.sh), [`host/wa
 
 Use **[Fedora Xfce Spin](https://fedoraproject.org/spins/xfce)** amd64 ISO in the VM (filename includes `-Live-`; that is normal — the ISO both boots a live session **and** installs to disk), then **Install to Disk** during setup so packages and soak scripts persist across reboots. ISOs live under Fedora’s **[releases download tree](https://dl.fedoraproject.org/pub/fedora/linux/releases/)** (pick the current release → `Spins/x86_64/iso/` → Xfce `.iso`).
 
-After first boot: `sudo dnf install -y mpv xdotool xset` for [`guest-linux/repro.sh`](guest-linux/repro.sh). (Older docs mentioned `xorg-x11-server-utils`; on Fedora 44 **`xset` is its own package**.)
+After first boot: `sudo dnf install -y mpv xdotool xset` for [`guest-linux/repro.sh`](guest-linux/repro.sh). (Older docs mentioned `xorg-x11-server-utils`; on Fedora 44 **`xset` is its own package**.) For Phase B’s default H.264 network sample, enable **RPM Fusion (free)** and install full **`ffmpeg`** (typically `sudo dnf install -y ffmpeg --allowerasing` to replace **`ffmpeg-free`**) — see [`README.md` — Codec stack for Phase B (Fedora)](README.md#codec-stack-for-phase-b-fedora). **SSH from another machine:** install **`openssh-server`**, enable **`sshd`**, then before Phases **A–C** over SSH export **`DISPLAY=:0`** and **`XAUTHORITY`** for the logged-in X11 user — see [`README.md` — SSH from another machine (optional)](README.md#ssh-from-another-machine-optional).
 
 **Alternative:** Debian Live Xfce amd64 hybrid from [Debian CD/live](https://www.debian.org/CD/live/).
 
